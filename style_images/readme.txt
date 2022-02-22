@@ -1,0 +1,2 @@
+Her ligger stil-bilder som er hentet fra en Kaggle-competition: https://www.kaggle.com/c/painter-by-numbers/data, som er samme dataset som ble brukt
+i artikelen vi koker. Her e bare 200 bilder av test2.zip lagt inn.
