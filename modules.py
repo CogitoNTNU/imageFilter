@@ -1,3 +1,5 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 from typing import Callable, List, Optional
 
 import torch
@@ -6,6 +8,8 @@ from torchvision.datasets.folder import default_loader
 from torchvision.models import VGG, vgg19
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Sequential(nn.Sequential):
     def __init__(self, **kwargs):
@@ -183,8 +187,8 @@ class AdaIN(nn.Module):
 
 if __name__ == '__main__':
 
-    content_img_path = "lofoten.jpg"
-    style_img_path = "starry_night_full.jpg"
+    content_img_path = "starry_night_full.jpg"
+    style_img_path = "lofoten.jpg"
     style_img = default_loader(style_img_path)
     content_img = default_loader(content_img_path)
 
@@ -194,6 +198,9 @@ if __name__ == '__main__':
     style_img.unsqueeze_(dim=0)
     content_img.unsqueeze_(dim=0)
 
+    style_img = style_img.to(device)
+    content_img = content_img.to(device)
+
     encoder = Encoder(blocks=12)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
     adain = AdaIN()
     decoder = Decoder(blocks=12)
@@ -202,7 +209,13 @@ if __name__ == '__main__':
     for p in encoder.parameters():
         p.requires_grad = False
 
-    style_loss = FeatureLoss(encoder, loss_weight=1)
+
+    encoder = encoder.to(device)
+    adain = adain.to(device)
+    decoder = decoder.to(device)
+
+
+    style_loss = FeatureLoss(encoder, loss_weight=0.1)
     image_loss = ImageLoss(encoder.features[:6], pixel_loss_weight=2, feature_loss_weight=0.5)
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
 
@@ -216,13 +229,13 @@ if __name__ == '__main__':
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if epoch % 5 == 0:
-            plt.imshow(decoder_out.detach().squeeze(dim=0).numpy().transpose(1, 2, 0))
+        if epoch % 99 == 0:
+            plt.imshow(decoder_out.detach().cpu().squeeze(dim=0).numpy().transpose(1, 2, 0))
             plt.show()
 
 
-    #
-    #
+    
+    
     # with torch.no_grad():
     #     output = encoder(img)  # type: torch.Tensor
     #
