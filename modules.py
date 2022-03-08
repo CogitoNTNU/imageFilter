@@ -102,11 +102,11 @@ class Decoder(nn.Module):
 class TVLoss(nn.Module):
     """
     Total Variation regularizer (reduces high frequency structures)
-    :param tv_loss_weight: weight of the loss
+    :param loss_weight: weight of the loss
     """
-    def __init__(self, tv_loss_weight: float = 1e-3):
+    def __init__(self, loss_weight: float = 1e-3):
         super().__init__()
-        self.tv_loss_weight = tv_loss_weight
+        self.tv_loss_weight = loss_weight
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size = x.size()[0]
@@ -134,6 +134,15 @@ class FeatureLoss(nn.MSELoss):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         return super(FeatureLoss, self).forward(self.encoder(x), self.encoder(y)) * self.loss_weight
+
+
+class AdaINContentLoss(nn.MSELoss):
+    def __init__(self, loss_weight: float = 1e-3):
+        super().__init__()
+        self.loss_weight = loss_weight
+
+    def forward(self, x_features: torch.Tensor, adain_output: torch.Tensor) -> torch.Tensor:
+        return super(AdaINContentLoss, self).forward(x_features, adain_output) * self.loss_weight
 
 
 class PixelLoss(nn.MSELoss):
@@ -169,12 +178,7 @@ class AdaIN(nn.Module):
         std_y = y_features.std(dim=1, keepdim=True)
         mean_x = x_features.mean(dim=1, keepdim=True)
         std_x = x_features.std(dim=1, keepdim=True)
-        print(mean_y.shape, std_y.shape, mean_x.shape, std_x.shape)
-        adain = std_y * ((x_features - mean_x) / (std_x + 1e-8)) + mean_y
-        print(adain.shape)
-        return adain
-
-
+        return std_y * ((x_features - mean_x) / (std_x + 1e-8)) + mean_y
 
 
 if __name__ == '__main__':
@@ -190,27 +194,24 @@ if __name__ == '__main__':
     style_img.unsqueeze_(dim=0)
     content_img.unsqueeze_(dim=0)
 
-    encoder = Encoder()
+    encoder = Encoder(blocks=12)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
+    adain = AdaIN()
+    decoder = Decoder(blocks=12)
 
     # freeze encoder
     for p in encoder.parameters():
         p.requires_grad = False
 
-    adain = AdaIN()
-    decoder = Decoder()
-
-    style_loss = FeatureLoss(encoder)
-    tv_loss = TVLoss()
-    pixel_loss = PixelLoss()
+    style_loss = FeatureLoss(encoder, loss_weight=1)
+    image_loss = ImageLoss(encoder.features[:6], pixel_loss_weight=2, feature_loss_weight=0.5)
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
 
     for epoch in range(100):
-        encoder_out_style = encoder(style_img)
+        encoder_out_style = encoder(style_img)      # TODO: Pass both images through encoder in one forward pass
         encoder_out_content = encoder(content_img)
-        print(encoder_out_style.shape, encoder_out_content.shape)
         adain_out = adain(encoder_out_content, encoder_out_style)
         decoder_out = decoder(adain_out)
-        loss = style_loss(decoder_out, style_img) + tv_loss(decoder_out) + pixel_loss(decoder_out, content_img)
+        loss = style_loss(decoder_out, style_img) + image_loss(decoder_out, content_img)
         print(f"Epoch {epoch}: {loss.item()}")
         optimizer.zero_grad()
         loss.backward()
