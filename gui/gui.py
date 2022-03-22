@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import filedialog
 from dummy_model import DummyModel
 class StyleTransferGUI():
-    def __init__(self, model, width=800, height=600):
+    def __init__(self, model, width=700, height=400):
         self.image1 = None
         self.image2 = None
         self.output_image = None
@@ -24,10 +24,14 @@ class StyleTransferGUI():
         self.upload_b2.pack()
         self.switch_input_b  = tk.Button(self.root, text="Switch input", width=30, command = lambda:self.switch_image())
         self.switch_input_b.pack()
-        self.run_b = tk.Button(self.root, text="RUN!", width=30, command = lambda:self.combine_images())
+        self.run_text = tk.StringVar()
+        self.error_message = "Upload images first then RUN!"
+        self.default_message = "RUN!"
+        self.run_text.set(self.default_message)
+        self.run_b = tk.Button(self.root, textvariable=self.run_text, width=30, command = lambda:self.combine_images())
         self.run_b.pack()
         self.model = model
-        self.error_text = None
+        
     def switch_image(self):
         self.image1, self.image2 = self.image2, self.image1
         self.update()
@@ -43,7 +47,7 @@ class StyleTransferGUI():
             self.canvas.image2 = self.tk_im2
         if self.output_image is not None:
             self.tk_imO = ImageTk.PhotoImage(self.output_image)
-            self.canvas.create_image(self.height/2, self.width/2, anchor=tk.CENTER, image=self.tk_imO)    
+            self.canvas.create_image(self.width/2, self.height-50,anchor=tk.CENTER, image=self.tk_imO)    
             self.canvas.imageO = self.tk_imO
         
     def upload_im_1(self):
@@ -63,8 +67,9 @@ class StyleTransferGUI():
     
     def combine_images(self):
         if not self.image1 or not self.image2:
-            self.error_text = "Please upload images"
+            self.run_text.set(self.error_message)
         else:
+            self.run_text.set(self.default_message)
             self.output_image = model.forward(self.image1, self.image2)
             self.update()
     def run(self):
