@@ -14,6 +14,7 @@ class CustomImageDataset(Dataset):
         self.target_transform = target_transform
         self.images = os.listdir(img_dir)
 
+
     def __len__(self):
         return len(self.images)
     
