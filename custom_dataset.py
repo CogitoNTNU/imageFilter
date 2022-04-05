@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 from torchvision import transforms
-
+from PIL import Image
 
 class CustomImageDataset(Dataset):
     def __init__(self, img_dir, transform=None, target_transform=None):
@@ -20,16 +20,18 @@ class CustomImageDataset(Dataset):
     
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.images[idx])
-        image = read_image(img_path)
+        image = Image.open(img_path)
         if self.transform:
             image = self.transform(image)
+        
         if image.size()[0] == 1: image= image[0].repeat(3, 1, 1)
         return image
     
 
 
 if __name__ == '__main__':
-    dataset = CustomImageDataset('.\\style_images\\test_samples',transform = transforms.Resize((512, 640)))
+    dataset = CustomImageDataset('.\\style_images\\test_samples',transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor()])
+)
 
     bs = 10
     dataloader = DataLoader(dataset, batch_size=bs, shuffle=True)

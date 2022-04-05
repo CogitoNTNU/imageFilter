@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # dataset_style = CustomImageDataset('.\\style_images\\test_samples',transform = transforms.Resize((512, 640)))
     # dataset_content = CustomImageDataset('.\\content_images\\test_samples',transform = transforms.Resize((512, 640)))
-    transform = transforms.Compose([transforms.Resize((512, 640)),transforms.ToTensor()])
+    transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor()])
 
     dataset_style = CustomImageDataset('content_images/test_samples',transform)
     dataset_content = CustomImageDataset('style_images/test_samples',transform)
@@ -48,15 +48,13 @@ if __name__ == '__main__':
         #content_img.unsqueeze_(dim=0)
         for i, batch in enumerate(zip(dataloader_style,dataloader_content)):
 
-            batch_style = batch[0][0].unsqueeze_(dim=0)
-            batch_content = batch[0][0].unsqueeze_(dim=0)
-            TF.to_tensor(batch_style)
-
+            batch_style = batch[0]
+            batch_content = batch[1]
 
             batch_style = batch_style.to(device)
             batch_content = batch_content.to(device)
-
-
+            print(batch_style.shape)
+            
             encoder_out_style = encoder(batch_style)      # TODO: Pass both images through encoder in one forward pass
             encoder_out_content = encoder(batch_content)
             adain_out = adain(encoder_out_content, encoder_out_style)
