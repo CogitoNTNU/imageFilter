@@ -1,6 +1,7 @@
 from modules import*
 from custom_dataset import*
-
+from copy import deepcopy
+import numpy as np
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -20,6 +21,10 @@ if __name__ == '__main__':
 
     style_loss = FeatureLoss(encoder, loss_weight=0.1)
     image_loss = ImageLoss(encoder.features[:6], pixel_loss_weight=2, feature_loss_weight=0.5)
+
+    style_lamda = 0.75
+    loss_criterion = AdaINLoss(style_lamda)
+
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
 
 
@@ -35,6 +40,15 @@ if __name__ == '__main__':
     dataloader_style = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
     dataloader_content = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
 
+    # Hooks for activations
+    activation = {}
+    def get_activation(name):
+        def hook(model, input, output):
+            activation[name] = output.clone().detach()
+        return hook
+    style_layers = ['1','4','9','11']
+    for i, layer in enumerate(style_layers):
+        encoder.features[i].register_forward_hook(get_activation(i))
     n_epochs = 2
     for epoch in range(n_epochs):
 
@@ -44,7 +58,7 @@ if __name__ == '__main__':
         #style_img.unsqueeze_(dim=0)
         #content_img.unsqueeze_(dim=0)
         for i, batch in enumerate(zip(dataloader_style,dataloader_content)):
-
+            optimizer.zero_grad()
             batch_style = batch[0]
             batch_content = batch[1]
 
@@ -56,11 +70,51 @@ if __name__ == '__main__':
             encoder_out_content = encoder(batch_content)
             adain_out = adain(encoder_out_content, encoder_out_style)
             decoder_out = decoder(adain_out)
-            loss = style_loss(decoder_out, batch_style) + image_loss(decoder_out, batch_content)
+
+            style_activations = deepcopy(activation)
+            encoder_out_output = encoder(decoder_out)
+            output_activation = activation
+            """
+            Bad loss version 
+            """
+            
+            # output embeding
+            enc_out_o = encoder_out_output.clone().detach().cpu().squeeze(dim=0)
+            # Content embedding
+            a_out = adain_out.clone().detach().cpu().squeeze(dim=0)
+            
+            # style_activation
+            style_a = style_activations.values()
+
+            # output_activation
+            output_activation = output_activation.values()
+            print("prepare for loss")
+            for b1 in zip(enc_out_o, a_out, *style_a, *output_activation):
+                c_emb, out_emb, *rest = b1
+                style_a = []
+                for _ in style_layers:
+                    a, *rest = rest
+                    a.to(device)
+                    style_a.append(a)
+                output_a = []
+                for _ in style_layers:
+                    a, *rest = rest
+                    a.to(device)
+                    output_a.append(a)
+                c_emb.to(device)
+                out_emb.to(device)
+                loss = loss_criterion.forward(c_emb, out_emb, style_a, output_a)
+                loss.requires_grad = True
+                loss.backward()
+                optimizer.step()
+            """
+            Bad loss end
+            """
+            #loss = style_loss(decoder_out, batch_style) + image_loss(decoder_out, batch_content)
+            #optimizer.zero_grad()
+            #loss.backward()
+            #optimizer.step()
             print(f"Epoch {epoch}, Batch {i}: {loss.item()}")
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
 
         if epoch %5 == 0: ##Endre på hvor ofte du ønsker å lagre bildet
             img_tensor = decoder_out.detach().cpu().squeeze(dim=0)
