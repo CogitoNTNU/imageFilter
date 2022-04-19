@@ -23,7 +23,7 @@ if __name__ == '__main__':
     style_loss = FeatureLoss(encoder, loss_weight=0.1)
     image_loss = ImageLoss(encoder.features[:6], pixel_loss_weight=2, feature_loss_weight=0.5)
 
-    style_lamda = 1
+    style_lamda = 1*10
     loss_criterion = AdaINLoss(style_lamda)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
@@ -38,8 +38,8 @@ if __name__ == '__main__':
 
 
     batch_size = 1
-    dataloader_style = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
-    dataloader_content = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
+    dataloader_style = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
+    dataloader_content = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
 
     # Hooks for activations
     activation = {}
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         def hook(model, input, output):
             activation[name] = output #.clone().detach().cpu()
         return hook
-    style_layers = [1,6,8,11]
+    style_layers = [1,3,6,8,11]
     for i, layer in enumerate(style_layers):
         encoder.features[layer].register_forward_hook(get_activation(i))
     n_epochs = 10
@@ -64,16 +64,16 @@ if __name__ == '__main__':
             batch_content = batch[1]
 
             batch_style = batch_style.to(device)
+           
             batch_content = batch_content.to(device)
             
             encoder_out_style = encoder(batch_style)      # TODO: Pass both images through encoder in one forward pass
+            style_activations = deepcopy(activation)
             encoder_out_content = encoder(batch_content)
 
           
             adain_out = adain(encoder_out_content, encoder_out_style)
             decoder_out = decoder(adain_out)
-
-            style_activations = deepcopy(activation)
             encoder_out_output = encoder(decoder_out)
             output_activation = activation
         
@@ -86,11 +86,11 @@ if __name__ == '__main__':
             a_out = adain_out
             
             # style_activation
-            style_a = [*style_activations.values()][0]
-           
+            style_a = [layer[0] for layer in style_activations.values()]
+            print(style_a[0].shape)
 
             # output_activation
-            output_activation = [*output_activation.values()][0]
+            output_activation = [layer[0] for layer in output_activation.values()]
 
             '''
             for b1 in zip(a_out, enc_out_o, *style_a, *output_activation):

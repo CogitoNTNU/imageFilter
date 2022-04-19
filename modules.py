@@ -192,15 +192,17 @@ class AdaINLoss(nn.Module):
         mu_sum = 0
         sigma_sum = 0
         for style_act, output_act in zip(style_activations, output_activations):
-            mu_sum += torch.norm(self.mu(style_act)-self.mu(output_act))
-            sigma_sum += torch.norm(self.sigma(style_act)-self.sigma(output_act))
+            mu_norm = torch.norm(self.mu(output_act)-self.mu(style_act))
+            mu_sum += mu_norm
+            sigma_norm = torch.norm(self.sigma(output_act)-self.sigma(style_act))
+            sigma_sum += sigma_norm
         return mu_sum + sigma_sum
 
     def totalLoss(self, content_emb, output_emb, style_activations, output_activations):
         """ Calculates the overall loss. [See equation 11 of the Paper]"""
         content_loss = self.contentLoss(content_emb, output_emb)
         style_loss = self.styleLoss(style_activations, output_activations)
-        #print(content_loss.item(), style_loss.item())
+        print(content_loss.item(), style_loss.item())
         return content_loss+self.lambda_*style_loss
 
     def forward(self, content_emb, output_emb, style_activations, output_activations):
