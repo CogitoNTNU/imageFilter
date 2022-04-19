@@ -2,6 +2,7 @@ from PIL import Image, ImageTk
 import tkinter as tk
 from tkinter import filedialog
 from dummy_model import DummyModel
+from trined_model import TrinedModel
 class StyleTransferGUI():
     def __init__(self, model, width=700, height=400):
         self.image1 = None
@@ -75,6 +76,6 @@ class StyleTransferGUI():
     def run(self):
         self.root.mainloop()
 if __name__=="__main__":
-    model = DummyModel()
+    model = TrinedModel() #DummyModel()
     gui = StyleTransferGUI(model)
     gui.run()

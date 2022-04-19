@@ -40,7 +40,7 @@ class TrinedModel(ModelInterface):
         STD = torch.tensor([0.229, 0.224, 0.225])
 
         img = decoder_out * STD[:, None, None] + MEAN[:, None, None]
-        img = transforms.ToPILImage(img.permute(1,2,0))
+        img = transforms.ToPILImage(img)
 
         return img
 
