@@ -1,9 +1,8 @@
-from model_interface import ModelInterface
+from GUI.model_interface import ModelInterface
 from PIL import Image
 from os.path import exists
 import torch
 from torchvision import transforms
-from modules import*
 
 
 class TrinedModel(ModelInterface):
