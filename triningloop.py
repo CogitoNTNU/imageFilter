@@ -30,13 +30,13 @@ if __name__ == '__main__':
 
     # dataset_style = CustomImageDataset('.\\style_images\\test_samples',transform = transforms.Resize((512, 640)))
     # dataset_content = CustomImageDataset('.\\content_images\\test_samples',transform = transforms.Resize((512, 640)))
-    transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor()])
+    transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    dataset_style = CustomImageDataset('content_images/test_samples',transform)
-    dataset_content = CustomImageDataset('style_images/test_samples',transform)
+    dataset_style = CustomImageDataset('style_images/test_samples',transform)
+    dataset_content = CustomImageDataset('content_images/test_samples',transform)
 
 
-    batch_size = 10
+    batch_size = 1
     dataloader_style = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
     dataloader_content = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
 
@@ -44,12 +44,12 @@ if __name__ == '__main__':
     activation = {}
     def get_activation(name):
         def hook(model, input, output):
-            activation[name] = output.clone().detach()
+            activation[name] = output #.clone().detach().cpu()
         return hook
-    style_layers = ['1','4','9','11']
+    style_layers = ['1','6','8','11']
     for i, layer in enumerate(style_layers):
         encoder.features[i].register_forward_hook(get_activation(i))
-    n_epochs = 2
+    n_epochs = 100
     for epoch in range(n_epochs):
 
         #style_img = TF.resize(TF.to_tensor(style_img), (512, 640))  # TODO: Automatically find the needed size based on VGG-blocks used
@@ -77,19 +77,20 @@ if __name__ == '__main__':
             """
             Bad loss version 
             """
-            
             # output embeding
-            enc_out_o = encoder_out_output.clone().detach().cpu().squeeze(dim=0)
+            enc_out_o = encoder_out_output
             # Content embedding
-            a_out = adain_out.clone().detach().cpu().squeeze(dim=0)
+            a_out = adain_out
             
             # style_activation
-            style_a = style_activations.values()
+            style_a = [*style_activations.values()][0]
+           
 
             # output_activation
-            output_activation = output_activation.values()
+            output_activation = [*output_activation.values()][0]
             print("prepare for loss")
-            for b1 in zip(enc_out_o, a_out, *style_a, *output_activation):
+            '''
+            for b1 in zip(a_out, enc_out_o, *style_a, *output_activation):
                 c_emb, out_emb, *rest = b1
                 style_a = []
                 for _ in style_layers:
@@ -107,6 +108,15 @@ if __name__ == '__main__':
                 loss.requires_grad = True
                 loss.backward()
                 optimizer.step()
+                for el in style_a:
+                    el.detach().cpu()
+                for el in output_a:
+                    el.detach().cpu()
+           '''
+
+            loss = loss_criterion.forward(a_out, enc_out_o, style_a, output_activation)
+            loss.backward()
+            optimizer.step()
             """
             Bad loss end
             """
@@ -116,11 +126,16 @@ if __name__ == '__main__':
             #optimizer.step()
             print(f"Epoch {epoch}, Batch {i}: {loss.item()}")
 
-        if epoch %5 == 0: ##Endre på hvor ofte du ønsker å lagre bildet
-            img_tensor = decoder_out.detach().cpu().squeeze(dim=0)
+        if epoch %1 == 0: ##Endre på hvor ofte du ønsker å lagre bildet
+            img_tensor = decoder_out.detach().cpu()
             fig, axs = plt.subplots(batch_size,1,figsize=(5, 5*batch_size))
             for i in range(batch_size):
-                img = img_tensor[i].permute(1,2,0).squeeze()
-                axs[i].axis("off")
-                axs[i].imshow(img)
+                print(img_tensor.shape)
+                MEAN = torch.tensor([0.485, 0.456, 0.406])
+                STD = torch.tensor([0.229, 0.224, 0.225])
+
+                img = img_tensor[i] * STD[:, None, None] + MEAN[:, None, None]
+                img = img.permute(1,2,0).squeeze()
+                #axs[i].axis("off")
+                axs.imshow(img)
             plt.savefig(f"progressimages/epoch{epoch}.png")

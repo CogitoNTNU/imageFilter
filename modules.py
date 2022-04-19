@@ -232,6 +232,7 @@ class AdaIN(nn.Module):
         return std_y * ((x_features - mean_x) / (std_x + 1e-8)) + mean_y
 
 
+
 if __name__ == '__main__':
 
     content_img_path = "starry_night_full.jpg"

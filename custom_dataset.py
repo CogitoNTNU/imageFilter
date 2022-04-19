@@ -20,11 +20,10 @@ class CustomImageDataset(Dataset):
     
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.images[idx])
-        image = Image.open(img_path)
+        image = Image.open(img_path).convert('RGB')
         if self.transform:
             image = self.transform(image)
-        
-        if image.size()[0] == 1: image= image[0].repeat(3, 1, 1)
+        #if image.size()[0] == 1: image= image[0].repeat(3, 1, 1)
         return image
     
 
