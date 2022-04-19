@@ -192,8 +192,8 @@ class AdaINLoss(nn.Module):
         mu_sum = 0
         sigma_sum = 0
         for style_act, output_act in zip(style_activations, output_activations):
-            mu_sum = torch.norm(self.mu(style_act)-self.mu(output_act))
-            sigma_sum = torch.norm(self.sigma(style_act)-self.sigma(output_act))
+            mu_sum += torch.norm(self.mu(style_act)-self.mu(output_act))
+            sigma_sum += torch.norm(self.sigma(style_act)-self.sigma(output_act))
         return mu_sum + sigma_sum
 
     def totalLoss(self, content_emb, output_emb, style_activations, output_activations):
@@ -217,7 +217,7 @@ class AdaINLoss(nn.Module):
         across it's spatial dimensions as (h,w) tensor [See eq. 6 of paper] Note
         the permutations are required for broadcasting"""
         return torch.sqrt(torch.sum((x.permute([1,2,0])-self.mu(x)).permute([1,2,0])**2,(1,2))/(x.shape[1]*x.shape[2]))
-
+'''
 class AdaIN(nn.Module):
 
     def __init__(self):
@@ -229,8 +229,33 @@ class AdaIN(nn.Module):
         std_y = y_features.std(dim=1, keepdim=True)
         mean_x = x_features.mean(dim=1, keepdim=True)
         std_x = x_features.std(dim=1, keepdim=True)
-        return std_y * ((x_features - mean_x) / (std_x + 1e-8)) + mean_y
+        output = std_y * ((x_features - mean_x) / (std_x + 1e-8)) + mean_y
+        return output
+'''
+class AdaIN(nn.Module):
+    def __init__(self):
+        super().__init__()
 
+    def mu(self, x):
+        """ Takes a (n,c,h,w) tensor as input and returns the average across
+        it's spatial dimensions as (h,w) tensor [See eq. 5 of paper]"""
+        return torch.sum(x,(2,3))/(x.shape[2]*x.shape[3])
+
+    def sigma(self, x):
+        """ Takes a (n,c,h,w) tensor as input and returns the standard deviation
+        across it's spatial dimensions as (h,w) tensor [See eq. 6 of paper] Note
+        the permutations are required for broadcasting"""
+        return torch.sqrt((torch.sum((x.permute([2,3,0,1])-self.mu(x)).permute([2,3,0,1])**2,(2,3))+0.000000023)/(x.shape[2]*x.shape[3]))
+
+    def forward(self, x, y):
+        """ Takes a content embeding x and a style embeding y and changes
+        transforms the mean and standard deviation of the content embedding to
+        that of the style. [See eq. 8 of paper] Note the permutations are
+        required for broadcasting"""
+
+        output = (self.sigma(y)*((x.permute([2,3,0,1])-self.mu(x))/self.sigma(x)) + self.mu(y)).permute([2,3,0,1])
+       
+        return output
 
 
 if __name__ == '__main__':

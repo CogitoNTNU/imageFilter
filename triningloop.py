@@ -2,6 +2,7 @@ from modules import*
 from custom_dataset import*
 from copy import deepcopy
 import numpy as np
+import datetime
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     style_loss = FeatureLoss(encoder, loss_weight=0.1)
     image_loss = ImageLoss(encoder.features[:6], pixel_loss_weight=2, feature_loss_weight=0.5)
 
-    style_lamda = 0.75
+    style_lamda = 1
     loss_criterion = AdaINLoss(style_lamda)
 
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
@@ -32,8 +33,8 @@ if __name__ == '__main__':
     # dataset_content = CustomImageDataset('.\\content_images\\test_samples',transform = transforms.Resize((512, 640)))
     transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    dataset_style = CustomImageDataset('style_images/test_samples',transform)
-    dataset_content = CustomImageDataset('content_images/test_samples',transform)
+    dataset_style = CustomImageDataset('style_images_1/test_samples',transform)
+    dataset_content = CustomImageDataset('content_images_1/test_samples',transform)
 
 
     batch_size = 1
@@ -46,10 +47,10 @@ if __name__ == '__main__':
         def hook(model, input, output):
             activation[name] = output #.clone().detach().cpu()
         return hook
-    style_layers = ['1','6','8','11']
+    style_layers = [1,6,8,11]
     for i, layer in enumerate(style_layers):
-        encoder.features[i].register_forward_hook(get_activation(i))
-    n_epochs = 100
+        encoder.features[layer].register_forward_hook(get_activation(i))
+    n_epochs = 10
     for epoch in range(n_epochs):
 
         #style_img = TF.resize(TF.to_tensor(style_img), (512, 640))  # TODO: Automatically find the needed size based on VGG-blocks used
@@ -64,16 +65,18 @@ if __name__ == '__main__':
 
             batch_style = batch_style.to(device)
             batch_content = batch_content.to(device)
-            print(batch_style.shape)
             
             encoder_out_style = encoder(batch_style)      # TODO: Pass both images through encoder in one forward pass
             encoder_out_content = encoder(batch_content)
+
+          
             adain_out = adain(encoder_out_content, encoder_out_style)
             decoder_out = decoder(adain_out)
 
             style_activations = deepcopy(activation)
             encoder_out_output = encoder(decoder_out)
             output_activation = activation
+        
             """
             Bad loss version 
             """
@@ -88,7 +91,7 @@ if __name__ == '__main__':
 
             # output_activation
             output_activation = [*output_activation.values()][0]
-            print("prepare for loss")
+
             '''
             for b1 in zip(a_out, enc_out_o, *style_a, *output_activation):
                 c_emb, out_emb, *rest = b1
@@ -133,9 +136,11 @@ if __name__ == '__main__':
                 print(img_tensor.shape)
                 MEAN = torch.tensor([0.485, 0.456, 0.406])
                 STD = torch.tensor([0.229, 0.224, 0.225])
-
-                img = img_tensor[i] * STD[:, None, None] + MEAN[:, None, None]
+                img = img_tensor[i]
+                img = img * STD[:, None, None] + MEAN[:, None, None]
                 img = img.permute(1,2,0).squeeze()
                 #axs[i].axis("off")
                 axs.imshow(img)
             plt.savefig(f"progressimages/epoch{epoch}.png")
+    save_path = ".\\trained_model\\"+f'adain_model_{epoch}'
+    torch.save(decoder, save_path)
