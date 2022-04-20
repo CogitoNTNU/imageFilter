@@ -5,3 +5,5 @@ print("Torch is working!!")
 
 import PIL
 print('PIL',PIL.__version__)
+
+print(torch.cuda.is_available())

@@ -8,7 +8,7 @@ from modules import*
 
 class TrinedModel(ModelInterface):
     def __init__(self):
-        self.model_path = "trained_model/adain_model_9"
+        self.model_path = "trained_model/20_epoch_entire_dataset"
         super().__init__()
 
         self.transform = transforms.Compose([
@@ -21,8 +21,9 @@ class TrinedModel(ModelInterface):
         self.adain = AdaIN()
 
     def load_pretrained_model(self)->None:
+        device = torch.device('cpu')
         if exists(self.model_path):
-            self.decoder = torch.load(self.model_path)
+            self.decoder = torch.load(self.model_path, map_location=device)
         else:
             raise Exception(f"File {self.model_path} could not be found.")
 

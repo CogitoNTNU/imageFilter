@@ -6,6 +6,7 @@ import datetime
 if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
     encoder = Encoder(blocks=12)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
     adain = AdaIN()
     decoder = Decoder(blocks=12)
@@ -29,12 +30,13 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(decoder.parameters(), lr=1e-3)
 
 
-    # dataset_style = CustomImageDataset('.\\style_images\\test_samples',transform = transforms.Resize((512, 640)))
-    # dataset_content = CustomImageDataset('.\\content_images\\test_samples',transform = transforms.Resize((512, 640)))
     transform = transforms.Compose([transforms.Resize((512, 640)), transforms.ToTensor(),transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+    
+    dataset_style = CustomImageDataset('.\\style_images\\test_samples',transform)
+    dataset_content = CustomImageDataset('.\\content_images\\test_samples',transform)
 
-    dataset_style = CustomImageDataset('style_images_1/test_samples',transform)
-    dataset_content = CustomImageDataset('content_images_1/test_samples',transform)
+    # dataset_style = CustomImageDataset('style_images_1/test_samples',transform)
+    # dataset_content = CustomImageDataset('content_images_1/test_samples',transform)
 
 
     batch_size = 1
@@ -50,7 +52,9 @@ if __name__ == '__main__':
     style_layers = [1,3,6,8,11]
     for i, layer in enumerate(style_layers):
         encoder.features[layer].register_forward_hook(get_activation(i))
-    n_epochs = 10
+    n_epochs = 1
+    import time
+    start_time = time.time()
     for epoch in range(n_epochs):
 
         #style_img = TF.resize(TF.to_tensor(style_img), (512, 640))  # TODO: Automatically find the needed size based on VGG-blocks used
@@ -142,5 +146,12 @@ if __name__ == '__main__':
                 #axs[i].axis("off")
                 axs.imshow(img)
             plt.savefig(f"progressimages/epoch{epoch}.png")
-    save_path = ".\\trained_model\\"+f'adain_model_{epoch}'
+    save_path = ".\\trained_model\\"+f'1_epoch_entire_dataset'
     torch.save(decoder, save_path)
+  
+
+    print("Process finished --- %s seconds ---" % (time.time() - start_time))
+
+# 1 Epoch:  550 seconds    
+# 2 Epochs: 1105 seconds
+
