@@ -8,7 +8,7 @@ from modules import*
 
 class TrinedModel(ModelInterface):
     def __init__(self):
-        self.model_path = "trained_model/20_epoch_entire_dataset"
+        self.model_path = "trained_model/100_epoch_entire_dataset"
         super().__init__()
 
         self.transform = transforms.Compose([

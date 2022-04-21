@@ -52,7 +52,7 @@ if __name__ == '__main__':
     style_layers = [1,3,6,8,11]
     for i, layer in enumerate(style_layers):
         encoder.features[layer].register_forward_hook(get_activation(i))
-    n_epochs = 1
+    n_epochs = 100
     import time
     start_time = time.time()
     for epoch in range(n_epochs):
@@ -146,7 +146,7 @@ if __name__ == '__main__':
                 #axs[i].axis("off")
                 axs.imshow(img)
             plt.savefig(f"progressimages/epoch{epoch}.png")
-    save_path = ".\\trained_model\\"+f'1_epoch_entire_dataset'
+    save_path = ".\\trained_model\\"+f'100_epoch_entire_dataset'
     torch.save(decoder, save_path)
   
 
