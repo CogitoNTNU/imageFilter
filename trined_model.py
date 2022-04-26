@@ -8,7 +8,7 @@ from modules import*
 
 class TrinedModel(ModelInterface):
     def __init__(self):
-        self.model_path = "trained_model/400_epoch_entire_dataset"
+        self.model_path = "trained_model/100_epoch_entire_dataset"
         super().__init__()
 
         self.transform = transforms.Compose([
@@ -17,7 +17,7 @@ class TrinedModel(ModelInterface):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
-        self.encoder = Encoder(blocks=20)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
+        self.encoder = Encoder(blocks=12)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
         self.adain = AdaIN()
 
     def load_pretrained_model(self)->None:
