@@ -7,10 +7,13 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-    encoder = Encoder(blocks=12)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
+    encoder = Encoder(blocks=20)  # IDEAL BLOCKS ARE (depending on inclusion of 1 conv before output)5/6, 11/12, 19/20,
     adain = AdaIN()
-    decoder = Decoder(blocks=12)
+    
+    # Comment line to start from scratch
+    decoder = Decoder(blocks=20)
 
+    decoder = torch.load( "trained_model/200_epoch_entire_dataset", map_location='cpu')
     # freeze encoder
     for p in encoder.parameters():
         p.requires_grad = False
@@ -40,19 +43,21 @@ if __name__ == '__main__':
 
 
     batch_size = 1
-    dataloader_style = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
-    dataloader_content = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
+    dataloader_style = DataLoader(dataset_style, batch_size=batch_size, shuffle=True)
+    dataloader_content = DataLoader(dataset_content, batch_size=batch_size, shuffle=True)
 
     # Hooks for activations
-    activation = {}
-    def get_activation(name):
+    style_layers = [1,6,11,15, 20]
+    activation = [None]*len(style_layers)
+    def get_activation(i):
         def hook(model, input, output):
-            activation[name] = output #.clone().detach().cpu()
+            #print(output.shape)
+            activation[i] = output #.clone().detach().cpu()
         return hook
-    style_layers = [1,3,6,8,11]
+    
     for i, layer in enumerate(style_layers):
         encoder.features[layer].register_forward_hook(get_activation(i))
-    n_epochs = 100
+    n_epochs = 400
     import time
     start_time = time.time()
     for epoch in range(n_epochs):
@@ -90,11 +95,12 @@ if __name__ == '__main__':
             a_out = adain_out
             
             # style_activation
-            style_a = [layer[0] for layer in style_activations.values()]
-            print(style_a[0].shape)
+            #print(np.array(style_activations.values()).shape)
+            #style_a = [layer[0] for layer in style_activations.values()]
+            #print(style_a[0].shape)
 
             # output_activation
-            output_activation = [layer[0] for layer in output_activation.values()]
+            #output_activation = [layer[0] for layer in output_activation.values()]
 
             '''
             for b1 in zip(a_out, enc_out_o, *style_a, *output_activation):
@@ -121,7 +127,7 @@ if __name__ == '__main__':
                     el.detach().cpu()
            '''
 
-            loss = loss_criterion.forward(a_out, enc_out_o, style_a, output_activation)
+            loss = loss_criterion.forward(a_out, enc_out_o, style_activations, output_activation)
             loss.backward()
             optimizer.step()
             """
@@ -133,7 +139,7 @@ if __name__ == '__main__':
             #optimizer.step()
             print(f"Epoch {epoch}, Batch {i}: {loss.item()}")
 
-        if epoch %1 == 0: ##Endre på hvor ofte du ønsker å lagre bildet
+        if epoch %10 == 0: ##Endre på hvor ofte du ønsker å lagre bildet
             img_tensor = decoder_out.detach().cpu()
             fig, axs = plt.subplots(batch_size,1,figsize=(5, 5*batch_size))
             for i in range(batch_size):
@@ -145,8 +151,8 @@ if __name__ == '__main__':
                 img = img.permute(1,2,0).squeeze()
                 #axs[i].axis("off")
                 axs.imshow(img)
-            plt.savefig(f"progressimages/epoch{epoch}.png")
-    save_path = ".\\trained_model\\"+f'100_epoch_entire_dataset'
+            plt.savefig(f"progressimages2/epoch{epoch}.png")
+    save_path = ".\\trained_model\\"+f'400_epoch_entire_dataset'
     torch.save(decoder, save_path)
   
 
